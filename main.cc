@@ -128,33 +128,35 @@ void count(vector<int>& x, const vector<vector<float>>& values)
 	}
 }
 
+vector<vector<float>> copytmp;
+
 vector<int> solve()
 {
 	float factor = 1e-3;
-	vector<vector<float>> copy(g_values);
+	copytmp = g_values;
 	vector<int> cnt(g_vmin.size());
 
-	for (size_t i = 0; i < copy.size(); ++i) {
-		for (size_t j = 0; j < copy[i].size(); ++j) {
-			copy[i][j] += canonical() - 0.5;
+	for (size_t i = 0; i < copytmp.size(); ++i) {
+		for (size_t j = 0; j < copytmp[i].size(); ++j) {
+			copytmp[i][j] += canonical() - 0.5;
 		}
 	}
-	count(cnt, copy);
+	count(cnt, copytmp);
 
 	while (any_of(cnt.begin(), cnt.end(), [](float x){return x != 0.0;})) {
 
-		for (size_t i = 0; i < copy.size(); ++i) {
+		for (size_t i = 0; i < copytmp.size(); ++i) {
 			for (size_t j = 0; j < g_vmin.size(); ++j) {
-				copy[i][j] += factor * cnt[j] * canonical_fast();
+				copytmp[i][j] += factor * cnt[j] * canonical_fast();
 			}
 		}
 
-		count(cnt, copy);
+		count(cnt, copytmp);
 	}
 
-	vector<int> results(g_vmin.size());
-	for (size_t i = 0; i < copy.size(); ++i)
-		results[i] = distance(copy[i].begin(), min_element(copy[i].begin(), copy[i].end()));
+	vector<int> results(g_vmin.size(), 0);
+	for (size_t i = 0; i < copytmp.size(); ++i)
+		results[i] = distance(copytmp[i].begin(), min_element(copytmp[i].begin(), copytmp[i].end()));
 
 	return results;
 }
