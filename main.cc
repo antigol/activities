@@ -67,7 +67,7 @@ bool parse_file(string filename, char delim)
 
 	ifstream file(filename);
 	if (!file.good()) {
-		cerr << "cannot open file" << endl;
+		cerr << "cannot open file " << filename << endl;
 		return false;
 	}
 	string s1, s2;
@@ -131,15 +131,14 @@ void count(vector<int>& x, const vector<vector<float>>& values)
 vector<int> solve()
 {
 	float factor = 1e-3;
-	vector<int> results;
-	vector<vector<float>> copy = g_values;
+	vector<vector<float>> copy(g_values);
+	vector<int> cnt(g_vmin.size());
 
 	for (size_t i = 0; i < copy.size(); ++i) {
 		for (size_t j = 0; j < copy[i].size(); ++j) {
 			copy[i][j] += canonical() - 0.5;
 		}
 	}
-	vector<int> cnt(g_vmin.size());
 	count(cnt, copy);
 
 	while (any_of(cnt.begin(), cnt.end(), [](float x){return x != 0.0;})) {
@@ -153,6 +152,7 @@ vector<int> solve()
 		count(cnt, copy);
 	}
 
+	vector<int> results(g_vmin.size());
 	for (size_t i = 0; i < copy.size(); ++i)
 		results[i] = distance(copy[i].begin(), min_element(copy[i].begin(), copy[i].end()));
 
@@ -173,19 +173,20 @@ vector<int> search_solution()
 	canonical_fast_initialize();
 
 	int iteration = 0;
+	vector<int> results;
 
-	#pragma omp parallel
-	while (run) {
+	//#pragma omp parallel
+	while (run && iteration < 20) {
 		cout << iteration++ << "     \r" << flush;
 
-		vector<int> results = solve();
+		results = solve();
 
 		int score = 0;
 		for (size_t i = 0; i < g_values.size(); ++i) {
 			score += pow(g_values[i][results[i]], 2);
 		}
 
-		#pragma omp critical
+		//#pragma omp critical
 		if (score < best_score || best_score == -1) {
 			best_score = score;
 			best_results = results;
