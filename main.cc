@@ -8,7 +8,7 @@
 
 using namespace std;
 
-typedef float number;
+typedef double number;
 
 inline std::mt19937_64& global_random_engine()
 {
@@ -19,24 +19,24 @@ inline std::mt19937_64& global_random_engine()
 
 inline number canonical()
 {
-	return std::generate_canonical<number, 16>(global_random_engine());
+	return std::generate_canonical<number, std::numeric_limits<number>::digits>(global_random_engine());
 }
 
-constexpr size_t g_random_numbers_size = 32768;
+constexpr size_t g_random_numbers_size = 16*16*16*16;
 vector<number> g_random_numbers;
 
 void canonical_fast_initialize()
 {
-	g_random_numbers.clear();
-	g_random_numbers.reserve(g_random_numbers_size);
+	g_random_numbers.resize(g_random_numbers_size);
 	for (size_t i = 0; i < g_random_numbers_size; ++i)
-		g_random_numbers.push_back(canonical());
+		g_random_numbers[i] = canonical();
 }
 
 inline number canonical_fast()
 {
 	static size_t i = 0;
 	i = (i + 1) % g_random_numbers_size;
+	//if (i == 0) cout << "R" << flush;
 	return g_random_numbers[i];
 }
 
@@ -93,18 +93,33 @@ bool parse_file(string filename, char delim)
 		cerr << "there is " << g_vmin.size() << " min bound elements and " << g_vmax.size() << " max bound elements" << endl;
 		return false;
 	}
+	for (size_t i = 0; i < g_vmin.size(); ++i) {
+		if (g_vmin[i] > g_vmax[i]) {
+			cerr << "vmin must be smaller than vmax" << endl;
+			return false;
+		}
+	}
 
 	int line_number = 2;
 	while (getline(file, s1)) {
 		line_number++;
 		istringstream line(s1);
-		g_values.push_back(vector<number>());
+		vector<number> vals;
 		while (getline(line, s2, delim)) {
-			g_values.back().push_back(stoi(s2));
+			vals.push_back(stoi(s2));
 		}
-		if (g_vmin.size() != g_values.back().size()) {
-			cerr << "on line " << line_number << " of the file there is " << g_values.back().size() << " values but " << g_vmin.size() << " bounds" << endl;
+		if (g_vmin.size() != vals.size()) {
+			cerr << "at line " << line_number << ": there is " << vals.size() << " values but " << g_vmin.size() << " bounds" << endl;
 			return false;
+		}
+		g_values.push_back(vals);
+
+		sort(vals.begin(), vals.end());
+		for (size_t i = 0; i < vals.size(); ++i) {
+			if (vals[i] != i) {
+				cerr << "at line " << line_number << ": each number must appear once" << endl;
+				return false;
+			}
 		}
 	}
 	return true;
@@ -135,13 +150,11 @@ bool is_not_null(int x)
 	return x != 0;
 }
 
-void solve(vector<vector<number>> values, vector<int>& results)
+void shuffle(vector<vector<number>> values, vector<int>& results)
 {
-	number factor = 1e-3;
-
 	for (size_t i = 0; i < values.size(); ++i) {
 		for (size_t j = 0; j < values[i].size(); ++j) {
-			values[i][j] += canonical() - 0.5;
+			values[i][j] += 2.0 * 0.1 * (canonical() - 0.5);
 		}
 	}
 	vector<int> cnt;
@@ -151,7 +164,7 @@ void solve(vector<vector<number>> values, vector<int>& results)
 
 		for (size_t i = 0; i < values.size(); ++i) {
 			for (size_t j = 0; j < g_vmin.size(); ++j) {
-				values[i][j] += factor * cnt[j] * canonical_fast();
+				values[i][j] += 2e-4 * cnt[j] * canonical_fast();
 			}
 		}
 
@@ -169,33 +182,33 @@ void leave(int)
 	run = false;
 }
 
-
 vector<int> search_solution()
 {
-	vector<int> results;
-
 	int best_score = -1;
 	vector<int> best_results;
-
-	canonical_fast_initialize();
+	vector<int> results;
 
 	int iteration = 0;
 
-	#pragma omp parallel
+#pragma omp parallel private(results)
 	while (run) {
-		cout << iteration++ << "     \r" << flush;
 
-		solve(g_values, results);
+#pragma omp master
+		{
+			canonical_fast_initialize();
+			cout << iteration << "     \r" << flush;
+		}
+
+		shuffle(g_values, results);
 
 		int score = 0;
 		for (size_t i = 0; i < g_values.size(); ++i) {
 			score += pow(g_values[i][results[i]], 2);
 		}
 
-		#pragma omp critical
+#pragma omp critical
 		{
-			canonical_fast_initialize();
-
+			iteration++;
 			if (score < best_score || best_score == -1) {
 				best_score = score;
 				best_results = results;

@@ -1,6 +1,6 @@
 CONFIG += c++11
 SOURCES += main.cc
-QT += core
+QT -= core
 
 QMAKE_CXXFLAGS += -fopenmp
 LIBS += -fopenmp
