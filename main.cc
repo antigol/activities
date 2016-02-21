@@ -8,6 +8,8 @@
 
 using namespace std;
 
+typedef float number;
+
 inline std::mt19937_64& global_random_engine()
 {
 	static std::random_device rdev;
@@ -15,13 +17,13 @@ inline std::mt19937_64& global_random_engine()
 	return eng;
 }
 
-inline float canonical()
+inline number canonical()
 {
-	return std::generate_canonical<float, 16>(global_random_engine());
+	return std::generate_canonical<number, 16>(global_random_engine());
 }
 
 constexpr size_t g_random_numbers_size = 32768;
-vector<float> g_random_numbers;
+vector<number> g_random_numbers;
 
 void canonical_fast_initialize()
 {
@@ -31,7 +33,7 @@ void canonical_fast_initialize()
 		g_random_numbers.push_back(canonical());
 }
 
-inline float canonical_fast()
+inline number canonical_fast()
 {
 	static size_t i = 0;
 	i = (i + 1) % g_random_numbers_size;
@@ -39,7 +41,7 @@ inline float canonical_fast()
 }
 
 vector<int> g_vmin, g_vmax;
-vector<vector<float>> g_values;
+vector<vector<number>> g_values;
 
 bool parse_commandline(int argc, char* argv[], string& inputfile, string& outputfile, char& delim)
 {
@@ -96,7 +98,7 @@ bool parse_file(string filename, char delim)
 	while (getline(file, s1)) {
 		line_number++;
 		istringstream line(s1);
-		g_values.push_back(vector<float>());
+		g_values.push_back(vector<number>());
 		while (getline(line, s2, delim)) {
 			g_values.back().push_back(stoi(s2));
 		}
@@ -108,9 +110,9 @@ bool parse_file(string filename, char delim)
 	return true;
 }
 
-void count(vector<int>& x, const vector<vector<float>>& values)
+void count(vector<int>& x, const vector<vector<number>>& values)
 {
-	fill(x.begin(), x.end(), 0);
+	x.resize(g_vmin.size());
 
 	// occupation of each workshop
 	for (size_t i = 0; i < values.size(); ++i) {
@@ -128,37 +130,37 @@ void count(vector<int>& x, const vector<vector<float>>& values)
 	}
 }
 
-vector<vector<float>> copytmp;
-
-vector<int> solve()
+bool is_not_null(int x)
 {
-	float factor = 1e-3;
-	copytmp = g_values;
-	vector<int> cnt(g_vmin.size());
+	return x != 0;
+}
 
-	for (size_t i = 0; i < copytmp.size(); ++i) {
-		for (size_t j = 0; j < copytmp[i].size(); ++j) {
-			copytmp[i][j] += canonical() - 0.5;
+void solve(vector<vector<number>> values, vector<int>& results)
+{
+	number factor = 1e-3;
+
+	for (size_t i = 0; i < values.size(); ++i) {
+		for (size_t j = 0; j < values[i].size(); ++j) {
+			values[i][j] += canonical() - 0.5;
 		}
 	}
-	count(cnt, copytmp);
+	vector<int> cnt;
+	count(cnt, values);
 
-	while (any_of(cnt.begin(), cnt.end(), [](float x){return x != 0.0;})) {
+	while (any_of(cnt.begin(), cnt.end(), is_not_null)) {
 
-		for (size_t i = 0; i < copytmp.size(); ++i) {
+		for (size_t i = 0; i < values.size(); ++i) {
 			for (size_t j = 0; j < g_vmin.size(); ++j) {
-				copytmp[i][j] += factor * cnt[j] * canonical_fast();
+				values[i][j] += factor * cnt[j] * canonical_fast();
 			}
 		}
 
-		count(cnt, copytmp);
+		count(cnt, values);
 	}
 
-	vector<int> results(g_vmin.size(), 0);
-	for (size_t i = 0; i < copytmp.size(); ++i)
-		results[i] = distance(copytmp[i].begin(), min_element(copytmp[i].begin(), copytmp[i].end()));
-
-	return results;
+	results.resize(values.size());
+	for (size_t i = 0; i < values.size(); ++i)
+		results[i] = distance(values[i].begin(), min_element(values[i].begin(), values[i].end()));
 }
 
 bool run = true;
@@ -167,32 +169,38 @@ void leave(int)
 	run = false;
 }
 
+
 vector<int> search_solution()
 {
+	vector<int> results;
+
 	int best_score = -1;
 	vector<int> best_results;
 
 	canonical_fast_initialize();
 
 	int iteration = 0;
-	vector<int> results;
 
-	//#pragma omp parallel
-	while (run && iteration < 20) {
+	#pragma omp parallel
+	while (run) {
 		cout << iteration++ << "     \r" << flush;
 
-		results = solve();
+		solve(g_values, results);
 
 		int score = 0;
 		for (size_t i = 0; i < g_values.size(); ++i) {
 			score += pow(g_values[i][results[i]], 2);
 		}
 
-		//#pragma omp critical
-		if (score < best_score || best_score == -1) {
-			best_score = score;
-			best_results = results;
-			cout << "score : " << score << endl;
+		#pragma omp critical
+		{
+			canonical_fast_initialize();
+
+			if (score < best_score || best_score == -1) {
+				best_score = score;
+				best_results = results;
+				cout << "score : " << score << endl;
+			}
 		}
 	}
 
@@ -245,12 +253,16 @@ int main(int argc, char* argv[])
 	if (!write_output(outputfile, results)) return 1;
 
 
+	size_t total = 0;
 	for (int i = 0; i < (int)g_values[0].size(); ++i) {
 		size_t sum = 0;
 		for (size_t j = 0; j < results.size(); ++j)
 			if (g_values[j][results[j]] == i)
 				sum++;
+		total += sum;
 		cout << "#" << i << " choice : " << sum << " students (" << double(1000*sum/g_values.size())/10.0 << "%)." << endl;
+
+		if (total == g_values.size()) break;
 	}
 
 	cout << "for a total of " << g_values.size() << " students." << endl;
