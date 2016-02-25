@@ -1,3 +1,8 @@
+Each people sort the workshops in with they preferences.
+Each workshop has a lower and upper bound capacity.
+
+Aim : find the best distribution.
+
 VMIN
 VMAX
 VALUES
