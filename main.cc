@@ -150,6 +150,12 @@ bool is_not_null(int x)
 	return x != 0;
 }
 
+bool g_run = true;
+void leave(int)
+{
+	g_run = false;
+}
+
 void shuffle(vector<vector<number>> values, vector<int>& results)
 {
 	for (size_t i = 0; i < values.size(); ++i) {
@@ -168,18 +174,14 @@ void shuffle(vector<vector<number>> values, vector<int>& results)
 			}
 		}
 
+		if (!g_run) break;
+
 		count(cnt, values);
 	}
 
 	results.resize(values.size());
 	for (size_t i = 0; i < values.size(); ++i)
 		results[i] = distance(values[i].begin(), min_element(values[i].begin(), values[i].end()));
-}
-
-bool run = true;
-void leave(int)
-{
-	run = false;
 }
 
 vector<int> search_solution()
@@ -190,16 +192,19 @@ vector<int> search_solution()
 
 	int iteration = 0;
 
+	canonical_fast_initialize();
+
 #pragma omp parallel private(results)
-	while (run) {
+	while (g_run) {
 
 #pragma omp master
 		{
-			canonical_fast_initialize();
 			cout << iteration << "     \r" << flush;
 		}
 
 		shuffle(g_values, results);
+
+		if (!g_run) break;
 
 		int score = 0;
 		for (size_t i = 0; i < g_values.size(); ++i) {
@@ -208,6 +213,10 @@ vector<int> search_solution()
 
 #pragma omp critical
 		{
+#pragma omp master
+			{
+				canonical_fast_initialize();
+			}
 			iteration++;
 			if (score < best_score || best_score == -1) {
 				best_score = score;
