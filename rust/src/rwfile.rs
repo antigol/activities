@@ -1,0 +1,80 @@
+use std::io::BufReader;
+use std::fs::File;
+use std::io::prelude::*;
+
+pub fn write_file(out_file: &String, delimiter: &String, vmin: &Vec<u32>, vmax: &Vec<u32>, wishes:& Vec<Vec<u32>>, results: &Vec<usize>) {
+    let mut buffer = File::create(out_file).expect("error when open output file");
+
+    for j in 0..vmin.len() {
+        buffer.write(format!("{}{}", vmin[j], delimiter).as_bytes()).unwrap();
+    }
+    buffer.write(b"\n").unwrap();
+    for j in 0..vmin.len() {
+        buffer.write(format!("{}{}", vmax[j], delimiter).as_bytes()).unwrap();
+    }
+    buffer.write(b"\n").unwrap();
+
+    for i in 0..wishes.len() {
+        for j in 0..vmin.len() {
+            buffer.write(format!("{}{}", wishes[i][j], delimiter).as_bytes()).unwrap();
+        }
+        buffer.write(format!("{}", results[i]).as_bytes()).unwrap();
+        buffer.write(b"\n").unwrap();
+    }
+}
+
+pub fn read_file(in_file: &String, delimiter: &String) -> (Vec<u32>, Vec<u32>, Vec<Vec<u32>>) {
+    let f = File::open(in_file).expect("error when open file");
+    let mut reader = BufReader::new(f);
+    let mut buffer = String::new();
+
+    reader.read_line(&mut buffer).expect("The file is too short");
+    let vmin : Vec<u32> = buffer.split(delimiter)
+    .map(|x| x.trim())
+    .filter(|x| !x.is_empty())
+    .map(|x| x.trim().parse::<u32>().expect("error while reading VMIN"))
+    .collect();
+    let n = vmin.len();
+
+    buffer.clear();
+    reader.read_line(&mut buffer).expect("The file is too short");
+    let vmax : Vec<u32> = buffer.split(delimiter)
+    .map(|x| x.trim())
+    .filter(|x| !x.is_empty())
+    .map(|x| x.trim().parse::<u32>().expect("error while reading VMAX"))
+    .collect();
+
+    if vmax.len() != n {
+        panic!("VMAX must be length n");
+    }
+    if vmin.iter().zip(vmax.iter()).any(|x| x.0 > x.1) {
+        panic!("VMIN <= VMAX needed");
+    }
+
+    let mut wishes : Vec<Vec<u32>> = Vec::new();
+
+    buffer.clear();
+    while reader.read_line(&mut buffer).unwrap() > 0 {
+        let line : Vec<u32> = buffer.split(delimiter)
+        .map(|x| x.trim())
+        .filter(|x| !x.is_empty())
+        .map(|x| x.trim().parse::<u32>().expect("error while reading WISHES"))
+        .collect();
+
+        if line.len() != n {
+            panic!("WHISH must be m by n");
+        }
+        wishes.push(line.clone());
+        let mut copy = line.clone();
+        copy.sort();
+        for i in 0..n {
+            if copy[i] != i as u32 {
+                panic!("WISHES lines must contain all values");
+            }
+        }
+
+        buffer.clear();
+    }
+
+    (vmin, vmax, wishes)
+}
