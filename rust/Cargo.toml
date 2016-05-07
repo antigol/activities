@@ -6,3 +6,4 @@ authors = ["Mario Geiger <geiger.mario@gmail.com>"]
 [dependencies]
 rand = "0.3"
 time = "0.1"
+num_cpus = "0.2.11"
