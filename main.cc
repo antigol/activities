@@ -5,6 +5,7 @@
 #include <sstream>
 #include <algorithm>
 #include <csignal>
+#include <chrono>
 
 using namespace std;
 
@@ -159,6 +160,11 @@ void leave(int)
 	g_run = false;
 }
 
+double sign(double x)
+{
+	return x < 0.0 ? -1.0 : 1.0;
+}
+
 void shuffle(vector<vector<number>> values, vector<int>& results)
 {
 	for (size_t i = 0; i < values.size(); ++i) {
@@ -169,18 +175,22 @@ void shuffle(vector<vector<number>> values, vector<int>& results)
 	vector<int> cnt;
 	count(cnt, values);
 
+	int a = 0;
 	while (any_of(cnt.begin(), cnt.end(), is_not_null)) {
 
 		for (size_t i = 0; i < values.size(); ++i) {
 			for (size_t j = 0; j < g_vmin.size(); ++j) {
-				values[i][j] += 2e-4 * cnt[j] * canonical_fast();
+				values[i][j] += 3e-4 * canonical_fast() * cnt[j] * cnt[j] * cnt[j];
 			}
 		}
 
 		if (!g_run) break;
 
 		count(cnt, values);
+
+		++a;
 	}
+	//cout << "a="<<a<<"    "<<endl;
 
 	results.resize(values.size());
 	for (size_t i = 0; i < values.size(); ++i)
@@ -194,6 +204,7 @@ vector<int> search_solution()
 	vector<int> results;
 
 	int iteration = 0;
+	auto t0 = chrono::system_clock::now();
 
 	canonical_fast_initialize();
 
@@ -202,7 +213,8 @@ vector<int> search_solution()
 
 #pragma omp master
 		{
-			cout << iteration << "           \r" << flush;
+			double rate = double(iteration) / std::chrono::duration_cast<std::chrono::seconds>(chrono::system_clock::now() - t0).count();
+			cout << iteration << "("<< rate<<"/s)" << "           \r" << flush;
 		}
 
 		shuffle(g_values, results);
@@ -211,7 +223,7 @@ vector<int> search_solution()
 
 		int score = 0;
 		for (size_t i = 0; i < g_values.size(); ++i) {
-			score += pow(g_values[i][results[i]], 2);
+			score += g_values[i][results[i]] * g_values[i][results[i]];
 		}
 
 #pragma omp critical
@@ -226,7 +238,7 @@ vector<int> search_solution()
 #pragma omp master
 			{
 				canonical_fast_initialize();
-				if (iteration > 200) g_run = false;
+				//if (iteration > 200) g_run = false;
 			}
 		}
 	}

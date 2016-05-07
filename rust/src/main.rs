@@ -59,7 +59,7 @@ fn shuffle(vmin: &Vec<u32>, vmax: &Vec<u32>, mut wishes: Vec<Vec<f64>>, rand: &m
 
         for i in 0..wishes.len() {
             for j in 0..vmin.len() {
-                wishes[i][j] += 2e-4 * (cnt[j] as f64) * rand.get();
+                wishes[i][j] += 3e-4 * rand.get() * (cnt[j]*cnt[j]*cnt[j]) as f64;
             }
         }
     }
@@ -124,7 +124,7 @@ fn search_solution(vmin: &Vec<u32>, vmax: &Vec<u32>, wishes: &Vec<Vec<u32>>) -> 
                 shared.iterations += 1;
 
                 if score < shared.best_score || shared.best_score == -1 {
-                    println!("{}# best score : {}      ", id, score);
+                    println!("\r{}# best score : {}                                ", id, score);
                     shared.best_score = score;
                     shared.best_results = results;
 
@@ -132,7 +132,7 @@ fn search_solution(vmin: &Vec<u32>, vmax: &Vec<u32>, wishes: &Vec<Vec<u32>>) -> 
                     shared.timeout = now + f64::max(1.5 * (now - t0), 20.0);
                 }
                 if id == 0 {
-                    print!("{:>5} {:.1} seconds left      \r", shared.iterations, shared.timeout - time::precise_time_s());
+                    print!("\r{:>5} ({:.0}/s) {:.1} left                                ", shared.iterations, shared.iterations as f64 / (time::precise_time_s() - t0), shared.timeout - time::precise_time_s());
                     io::stdout().flush().ok().expect("Could not flush stdout");
                 }
                 if time::precise_time_s() > shared.timeout {
@@ -151,7 +151,7 @@ fn search_solution(vmin: &Vec<u32>, vmax: &Vec<u32>, wishes: &Vec<Vec<u32>>) -> 
     let shared = shared.clone();
     let shared = shared.lock().unwrap();
 
-    print!("                        \r");
+    print!("                                \r");
 
     shared.best_results.clone()
 }
@@ -172,14 +172,20 @@ fn main() {
     rwfile::write_file(&out_file, &delimiter, &vmin, &vmax, &wishes, &results);
 
     let mut inc = vec![0; vmin.len()];
+    let mut wos = vec![0; vmin.len()];
     for i in 0..wishes.len() {
         inc[wishes[i][results[i]] as usize] += 1;
+        wos[results[i] as usize] += 1;
     }
     let mut s = 0;
     for j in 0..vmin.len() {
         s += inc[j];
-        println!("{:>3} at choice #{}", inc[j], j+1);
+        println!("#{} choice : {:>3}", j+1, inc[j]);
         if s == wishes.len() { break; }
     }
     println!("{} in total", wishes.len());
+
+    for j in 0..vmin.len() {
+        println!("WS{:>2} : {} <= {} <= {}", j+1, vmin[j], wos[j], vmax[j]);
+    }
 }
