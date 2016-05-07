@@ -107,7 +107,7 @@ fn search_solution(vmin: &Vec<u32>, vmax: &Vec<u32>, wishes: &Vec<Vec<u32>>) -> 
             best_score = score;
             best_results = results;
             println!("best score : {}      ", score);
-            timeout = f64::max(1.5 * (time::precise_time_s() - t0), 30.0);
+            timeout = f64::max(1.5 * (time::precise_time_s() - t0), 20.0);
             t1 = time::precise_time_s();
         }
     }
@@ -130,4 +130,12 @@ fn main() {
     let results = search_solution(&vmin, &vmax, &wishes);
 
     rwfile::write_file(&out_file, &delimiter, &vmin, &vmax, &wishes, &results);
+
+    let mut inc = vec![0; vmin.len()];
+    for i in 0..wishes.len() {
+        inc[wishes[i][results[i]] as usize] += 1;
+    }
+    for j in 0..vmin.len() {
+        println!("{:>3} gets their {}nd choice", inc[j], j+1);
+    }
 }

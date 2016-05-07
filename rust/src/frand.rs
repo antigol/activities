@@ -1,7 +1,7 @@
 extern crate rand;
 //rand::random::<f64>()
 
-const SIZE: usize = 16*16*16*16;
+const SIZE: usize = 16*1024;
 
 pub struct FastRand {
     i: usize,
