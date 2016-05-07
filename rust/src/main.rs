@@ -83,9 +83,6 @@ fn search_solution(vmin: &Vec<u32>, vmax: &Vec<u32>, wishes: &Vec<Vec<u32>>) -> 
     let mut rand = frand::FastRand::new();
     rand.initialize();
 
-    let mut local_best_score: i32 = -1;
-    let mut local_best_results = Vec::new();
-
     let mut wishesf = vec![vec![0.0; vmin.len()]; wishes.len()];
     for i in 0..wishes.len() {
         for j in 0..wishes[i].len() {
@@ -93,66 +90,68 @@ fn search_solution(vmin: &Vec<u32>, vmax: &Vec<u32>, wishes: &Vec<Vec<u32>>) -> 
         }
     }
 
-    let mut timeout = 10.0;
     let t0 = time::precise_time_s();
-    let mut t1 = t0;
 
-    while time::precise_time_s() - t1 < timeout {
-        print!("{:.1} seconds left      \r", t1 + timeout - time::precise_time_s());
-        io::stdout().flush().ok().expect("Could not flush stdout");
+    let timeout = Arc::new(Mutex::new(t0 + 10.0));
+    let best_score = Arc::new(Mutex::new(-1));
+    let best_results = Arc::new(Mutex::new(Vec::new()));
 
-        let best_score = Arc::new(Mutex::new(local_best_score));
-        let best_results = Arc::new(Mutex::new(local_best_results.clone()));
-
-        let mut childs = Vec::new();
-        for _ in 0..num_cpus::get() {
-            let best_score = best_score.clone();
-            let best_results = best_results.clone();
-            let vmin = vmin.clone();
-            let vmax = vmax.clone();
-            let wishes = wishes.clone();
-            let wishesf = wishesf.clone();
-            let mut rand = rand.clone();
-
-
-            childs.push(thread::spawn(move || {
-                rand.seed();
-                for _ in 0..3 {
-                    let results = shuffle(&vmin, &vmax, wishesf.clone(), &mut rand);
-                    let mut score: i32 = 0;
-                    for i in 0..wishes.len() {
-                        score += (wishes[i][results[i]] * wishes[i][results[i]]) as i32;
-                    }
-                    let mut best_score = best_score.lock().unwrap();
-                    if score < *best_score || *best_score == -1 {
-                        *best_score = score;
-                        let mut best_results = best_results.lock().unwrap();
-                        *best_results = results;
-                    }
-                }
-            }));
-        }
-        for child in childs {
-            child.join().unwrap();
-        }
-
+    let mut childs = Vec::new();
+    for id in 0..num_cpus::get() {
+        let timeout = timeout.clone();
         let best_score = best_score.clone();
-        let best_score = best_score.lock().unwrap();
         let best_results = best_results.clone();
-        let best_results = best_results.lock().unwrap();
+        let vmin = vmin.clone();
+        let vmax = vmax.clone();
+        let wishes = wishes.clone();
+        let wishesf = wishesf.clone();
+        let mut rand = rand.clone();
 
-        if local_best_score != *best_score {
-            local_best_score = *best_score;
-            local_best_results = best_results.clone();
 
-            println!("best score : {}      ", local_best_score);
-            timeout = f64::max(1.5 * (time::precise_time_s() - t0), 20.0);
-            t1 = time::precise_time_s();
-        }
+        childs.push(thread::spawn(move || {
+            rand.seed();
+
+            loop {
+                let results = shuffle(&vmin, &vmax, wishesf.clone(), &mut rand);
+                let mut score: i32 = 0;
+                for i in 0..wishes.len() {
+                    score += (wishes[i][results[i]] * wishes[i][results[i]]) as i32;
+                }
+
+                let mut best_score = best_score.lock().unwrap();
+                let mut timeout = timeout.lock().unwrap();
+
+                if score < *best_score || *best_score == -1 {
+                    let mut best_results = best_results.lock().unwrap();
+
+                    println!("{}# best score : {}      ", id, score);
+                    *best_score = score;
+                    *best_results = results;
+
+                    let now = time::precise_time_s();
+                    *timeout = now + f64::max(1.5 * (now - t0), 20.0);
+                }
+                if id == 0 {
+                    print!("{:.1} seconds left      \r", *timeout - time::precise_time_s());
+                    io::stdout().flush().ok().expect("Could not flush stdout");
+                }
+                if time::precise_time_s() > *timeout {
+                    break;
+                }
+            }
+        }));
     }
+    for child in childs {
+        child.join().unwrap();
+    }
+
+    let best_results = best_results.clone();
+    let best_results = best_results.lock().unwrap();
+    let best_results = best_results.clone();
+
     print!("                        \r");
 
-    local_best_results
+    best_results
 }
 
 fn main() {
@@ -174,7 +173,11 @@ fn main() {
     for i in 0..wishes.len() {
         inc[wishes[i][results[i]] as usize] += 1;
     }
+    let mut s = 0;
     for j in 0..vmin.len() {
-        println!("{:>3} gets their {}nd choice", inc[j], j+1);
+        s += inc[j];
+        println!("{:>3} at choice #{}", inc[j], j+1);
+        if s == wishes.len() { break; }
     }
+    println!("{} in total", wishes.len());
 }
