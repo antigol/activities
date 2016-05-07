@@ -1,7 +1,7 @@
 extern crate rand;
 use std::clone::Clone;
 
-const SIZE: usize = 32*1024;
+const SIZE: usize = 64*1024;
 
 pub struct FastRand {
     i: usize,
@@ -23,13 +23,15 @@ impl FastRand {
     }
 
     pub fn initialize(&mut self) {
-        for i in 0..self.buffer.len() {
+        for i in 0..SIZE {
             self.buffer[i] = rand::random::<f64>();
+            //self.buffer[i] = (i as f64) / (SIZE as f64);
         }
         self.i = 0;
         self.turns = 0;
     }
 
+#[inline]
     pub fn get(&mut self) -> f64 {
         self.i += 1;
         if self.i >= SIZE {
@@ -39,6 +41,7 @@ impl FastRand {
         self.buffer[self.i]
     }
 
+#[inline]
     pub fn get_turns(&self) -> usize {
         self.turns
     }

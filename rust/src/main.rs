@@ -23,47 +23,39 @@ fn min_pos<T: PartialOrd + Copy>(xs: &Vec<T>) -> usize {
     k
 }
 
-fn is_null(xs: &Vec<i32>) -> bool {
-    for i in 0..xs.len() {
-        if xs[i] != 0 {
-            return false;
-        }
-    }
-    true
-}
-
-fn count(vmin: &Vec<u32>, vmax: &Vec<u32>, wishes: &Vec<Vec<f64>>) -> Vec<i32> {
-    let mut x: Vec<i32> = vec![0; vmin.len()];
+fn count(vmin: &Vec<u32>, vmax: &Vec<u32>, wishes: &Vec<Vec<f64>>) -> (Vec<i32>, bool) {
+    let mut x = vec![0; vmin.len()];
 
     for i in 0..wishes.len() {
         x[min_pos(&wishes[i])] += 1;
     }
 
+    let mut ok = true;
     for i in 0..vmin.len() {
         if x[i] < vmin[i] as i32 {
             x[i] -= vmin[i] as i32; // negative value for a lack
+            ok = false;
         } else if x[i] > vmax[i] as i32 {
             x[i] -= vmax[i] as i32; // positive value for an overage
+            ok = false;
         } else {
             x[i] = 0; // null value if in range
         }
     }
 
-    x
+    (x, ok)
 }
 
 fn shuffle(vmin: &Vec<u32>, vmax: &Vec<u32>, mut wishes: Vec<Vec<f64>>, rand: &mut frand::FastRand) -> Vec<usize>
 {
     for i in 0..wishes.len() {
-        for j in 0..wishes[i].len() {
-            wishes[i][j] += 2.0 * 0.1 * (rand.get() - 0.5);
+        for j in 0..vmin.len() {
+            wishes[i][j] += 0.1 * 2.0 * (rand.get() - 0.5);
         }
     }
     loop {
-        let cnt = count(&vmin, &vmax, &wishes);
-        if is_null(&cnt) {
-            break;
-        }
+        let (cnt, ok) = count(&vmin, &vmax, &wishes);
+        if ok { break; }
 
         for i in 0..wishes.len() {
             for j in 0..vmin.len() {
@@ -72,10 +64,10 @@ fn shuffle(vmin: &Vec<u32>, vmax: &Vec<u32>, mut wishes: Vec<Vec<f64>>, rand: &m
         }
     }
 
-    let mut results = vec![0; wishes.len()];
+    let mut results = Vec::with_capacity(vmin.len());
 
     for i in 0..wishes.len() {
-        results[i] = min_pos(&wishes[i]);
+        results.push(min_pos(&wishes[i]));
     }
 
     results
@@ -84,7 +76,7 @@ fn shuffle(vmin: &Vec<u32>, vmax: &Vec<u32>, mut wishes: Vec<Vec<f64>>, rand: &m
 fn search_solution(vmin: &Vec<u32>, vmax: &Vec<u32>, wishes: &Vec<Vec<u32>>) -> Vec<usize> {
     let mut wishesf = vec![vec![0.0; vmin.len()]; wishes.len()];
     for i in 0..wishes.len() {
-        for j in 0..wishes[i].len() {
+        for j in 0..vmin.len() {
             wishesf[i][j] = wishes[i][j] as f64;
         }
     }
@@ -92,22 +84,22 @@ fn search_solution(vmin: &Vec<u32>, vmax: &Vec<u32>, wishes: &Vec<Vec<u32>>) -> 
     let t0 = time::precise_time_s();
 
     struct SharedData {
-        timeout: f64,
-        best_score: i32,
+        timeout:      f64,
+        best_score:   i32,
         best_results: Vec<usize>,
-        iterations: usize
+        iterations:   usize
     };
     let shared = Arc::new(Mutex::new(SharedData {
-        timeout:10.0,
-        best_score: -1,
+        timeout:      10.0,
+        best_score:   -1,
         best_results: Vec::new(),
-        iterations: 0
+        iterations:   0
     }));
 
     let mut childs = Vec::new();
+
     for id in 0..num_cpus::get() {
         let shared = shared.clone();
-
         let vmin = vmin.clone();
         let vmax = vmax.clone();
         let wishes = wishes.clone();
@@ -118,7 +110,7 @@ fn search_solution(vmin: &Vec<u32>, vmax: &Vec<u32>, wishes: &Vec<Vec<u32>>) -> 
             let mut rand = frand::FastRand::new();
 
             loop {
-                let results = shuffle(&vmin, &vmax, wishesf.clone(), &mut rand);
+                let results = shuffle(&vmin, &vmax, wishesf.clone(), &mut rand); // all the load is here
                 let mut score: i32 = 0;
                 for i in 0..wishes.len() {
                     score += (wishes[i][results[i]] * wishes[i][results[i]]) as i32;
@@ -146,6 +138,9 @@ fn search_solution(vmin: &Vec<u32>, vmax: &Vec<u32>, wishes: &Vec<Vec<u32>>) -> 
                 if time::precise_time_s() > shared.timeout {
                     break;
                 }
+                /*if shared.iterations > 200 {
+                    break;
+                }*/
             }
         }));
     }

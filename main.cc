@@ -22,7 +22,7 @@ inline number canonical()
 	return std::generate_canonical<number, std::numeric_limits<number>::digits>(global_random_engine());
 }
 
-constexpr size_t g_random_numbers_size = 16*16*16*16;
+constexpr size_t g_random_numbers_size = 64*1024;
 vector<number> g_random_numbers;
 
 void canonical_fast_initialize()
@@ -128,6 +128,9 @@ bool parse_file(string filename, char delim)
 void count(vector<int>& x, const vector<vector<number>>& values)
 {
 	x.resize(g_vmin.size());
+	for (size_t j = 0; j < g_vmin.size(); ++j) {
+		x[j] = 0;
+	}
 
 	// occupation of each workshop
 	for (size_t i = 0; i < values.size(); ++i) {
@@ -199,7 +202,7 @@ vector<int> search_solution()
 
 #pragma omp master
 		{
-			cout << iteration << "     \r" << flush;
+			cout << iteration << "           \r" << flush;
 		}
 
 		shuffle(g_values, results);
@@ -213,15 +216,17 @@ vector<int> search_solution()
 
 #pragma omp critical
 		{
-#pragma omp master
-			{
-				canonical_fast_initialize();
-			}
 			iteration++;
 			if (score < best_score || best_score == -1) {
 				best_score = score;
 				best_results = results;
-				cout << "score : " << score << endl;
+				cout << "score : " << score << "        " << endl;
+			}
+
+#pragma omp master
+			{
+				canonical_fast_initialize();
+				if (iteration > 200) g_run = false;
 			}
 		}
 	}

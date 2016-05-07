@@ -1,9 +1,13 @@
 [package]
-name = "rust"
-version = "0.1.0"
+name = "activities"
+version = "0.2.0"
 authors = ["Mario Geiger <geiger.mario@gmail.com>"]
+repository = "https://github.com/antigol/activities.git"
 
 [dependencies]
 rand = "0.3"
 time = "0.1"
 num_cpus = "0.2.11"
+
+[profile.release]
+opt-level = 3
