@@ -11,6 +11,10 @@ use std::sync::{Arc, Mutex};
 extern crate num_cpus;
 extern crate time;
 
+fn clearline() {
+    print!("\x1B[999D\x1B[K");
+}
+
 fn min_pos<T: PartialOrd + Copy>(xs: &Vec<T>) -> usize {
     let mut k = 0;
     let mut min = xs[0];
@@ -124,16 +128,18 @@ fn search_solution(vmin: &Vec<u32>, vmax: &Vec<u32>, wishes: &Vec<Vec<u32>>) -> 
                 shared.iterations += 1;
 
                 if score < shared.best_score || shared.best_score == -1 {
-                    println!("\r{}# best score : {}                                ", id, score);
+                    clearline();
+                    println!("{}# best score : {}", id, score);
                     shared.best_score = score;
                     shared.best_results = results;
 
                     let now = time::precise_time_s();
-                    shared.timeout = now + f64::max(1.5 * (now - t0), 20.0);
+                    shared.timeout = now + f64::max(1.5 * (now - t0), 10.0);
                 }
                 if id == 0 {
-                    print!("\r{:>5} ({:.0}/s) {:.1} left                                ", shared.iterations, shared.iterations as f64 / (time::precise_time_s() - t0), shared.timeout - time::precise_time_s());
-                    io::stdout().flush().ok().expect("Could not flush stdout");
+                    clearline();
+                    print!("{:>5} ({:.0}/s) {:.1} left", shared.iterations, shared.iterations as f64 / (time::precise_time_s() - t0), shared.timeout - time::precise_time_s());
+                    io::stdout().flush().ok().unwrap();
                 }
                 if time::precise_time_s() > shared.timeout {
                     break;
@@ -151,7 +157,7 @@ fn search_solution(vmin: &Vec<u32>, vmax: &Vec<u32>, wishes: &Vec<Vec<u32>>) -> 
     let shared = shared.clone();
     let shared = shared.lock().unwrap();
 
-    print!("                                \r");
+    clearline();
 
     shared.best_results.clone()
 }
@@ -177,13 +183,7 @@ fn main() {
         inc[wishes[i][results[i]] as usize] += 1;
         wos[results[i] as usize] += 1;
     }
-    let mut s = 0;
-    for j in 0..vmin.len() {
-        s += inc[j];
-        println!("#{} choice : {:>3}", j+1, inc[j]);
-        if s == wishes.len() { break; }
-    }
-    println!("{} in total", wishes.len());
+    println!("amount in each choice : {:?} over {}", inc, wishes.len());
 
     for j in 0..vmin.len() {
         println!("WS{:>2} : {} <= {} <= {}", j+1, vmin[j], wos[j], vmax[j]);
