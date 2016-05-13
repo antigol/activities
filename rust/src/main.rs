@@ -77,7 +77,7 @@ fn shuffle(vmin: &Vec<u32>, vmax: &Vec<u32>, mut wishes: Vec<Vec<f64>>, rand: &m
     results
 }
 
-fn search_solution(vmin: &Vec<u32>, vmax: &Vec<u32>, wishes: &Vec<Vec<u32>>) -> Vec<usize> {
+fn search_solution(vmin: &Vec<u32>, vmax: &Vec<u32>, wishes: &Vec<Vec<u32>>, time: f64) -> Vec<usize> {
     let mut wishesf = vec![vec![0.0; vmin.len()]; wishes.len()];
     for i in 0..wishes.len() {
         for j in 0..vmin.len() {
@@ -94,7 +94,7 @@ fn search_solution(vmin: &Vec<u32>, vmax: &Vec<u32>, wishes: &Vec<Vec<u32>>) -> 
         iterations:   usize
     };
     let shared = Arc::new(Mutex::new(SharedData {
-        timeout:      10.0,
+        timeout:      f64::max(10.0, time),
         best_score:   -1,
         best_results: Vec::new(),
         iterations:   0
@@ -128,17 +128,17 @@ fn search_solution(vmin: &Vec<u32>, vmax: &Vec<u32>, wishes: &Vec<Vec<u32>>) -> 
                 shared.iterations += 1;
 
                 if score < shared.best_score || shared.best_score == -1 {
-                    clearline();
-                    println!("{}# best score : {}", id, score);
+                    //clearline();
+                    //println!("{}# best score : {}", id, score);
                     shared.best_score = score;
                     shared.best_results = results;
 
                     let now = time::precise_time_s();
-                    shared.timeout = now + f64::max(1.5 * (now - t0), 10.0);
+                    shared.timeout = now + f64::max(1.5 * (now - t0), time);
                 }
                 if id == 0 {
                     clearline();
-                    print!("{:>5} ({:.0}/s) {:.1} left", shared.iterations, shared.iterations as f64 / (time::precise_time_s() - t0), shared.timeout - time::precise_time_s());
+                    print!("Iter {it:>5} ({rate:>4.0}/s). Actual best score : {bs:>4}. {left:.1} seconds left", bs=shared.best_score, it=shared.iterations, rate=shared.iterations as f64 / (time::precise_time_s() - t0), left=shared.timeout - time::precise_time_s());
                     io::stdout().flush().ok().unwrap();
                 }
                 if time::precise_time_s() > shared.timeout {
@@ -163,19 +163,31 @@ fn search_solution(vmin: &Vec<u32>, vmax: &Vec<u32>, wishes: &Vec<Vec<u32>>) -> 
 }
 
 fn main() {
-    let help = "arguments: input_file output_file (delimiter)";
+    let help = "arguments: input_file output_file (execution_time) (delimiter)";
     let in_file = env::args().nth(1).expect(help);
-    let out_file = env::args().nth(2).expect(help);
-    let delimiter : String = match env::args().nth(3) {
+    let out_file = match env::args().nth(2) {
+        Some(x) => x,
+        None => String::new()
+    };
+    let time = match env::args().nth(3) {
+        Some(x) => x.parse::<f64>().unwrap(),
+        None => 10.0
+    };
+    let delimiter : String = match env::args().nth(4) {
         Some(x) => x,
         None => ",".to_string()
     };
 
     let (vmin, vmax, wishes) = rwfile::read_file(&in_file, &delimiter);
 
-    let results = search_solution(&vmin, &vmax, &wishes);
+    println!("{} students. {} workshops", wishes.len(), vmin.len());
 
-    rwfile::write_file(&out_file, &delimiter, &vmin, &vmax, &wishes, &results);
+    let results = search_solution(&vmin, &vmax, &wishes, time);
+
+    let mut score = 0;
+    for i in 0..wishes.len() {
+        score += wishes[i][results[i]] * wishes[i][results[i]];
+    }
 
     let mut inc = vec![0; vmin.len()];
     let mut wos = vec![0; vmin.len()];
@@ -183,9 +195,20 @@ fn main() {
         inc[wishes[i][results[i]] as usize] += 1;
         wos[results[i] as usize] += 1;
     }
-    println!("amount in each choice : {:?} over {}", inc, wishes.len());
+    println!("Final best score {}", score);
+    println!("Amount in each choice : {:?}", inc);
 
     for j in 0..vmin.len() {
         println!("WS{:>2} : {} <= {} <= {}", j+1, vmin[j], wos[j], vmax[j]);
+    }
+
+    if out_file.len() == 0 {
+        for x in &results {
+            print!("{}{}", x, delimiter);
+        }
+        println!("");
+    } else {
+        rwfile::write_file(&out_file, &delimiter, &vmin, &vmax, &wishes, &results);
+        println!("Results written into file {}", out_file);
     }
 }
