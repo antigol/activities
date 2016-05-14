@@ -12,7 +12,9 @@ extern crate num_cpus;
 extern crate time;
 
 fn clearline() {
-    print!("\x1B[999D\x1B[K");
+    print!("\x1B[999D\x1B[K"); // contains two commands
+    // 999D : cursor left by 999 caracter
+    // K    : erase line
 }
 
 fn min_pos<T: PartialOrd + Copy>(xs: &Vec<T>) -> usize {
@@ -120,7 +122,7 @@ fn search_solution(vmin: &Vec<u32>, vmax: &Vec<u32>, wishes: &Vec<Vec<u32>>, tim
                     score += (wishes[i][results[i]] * wishes[i][results[i]]) as i32;
                 }
                 if rand.get_turns() > 512 {
-                    rand.initialize();
+                    rand.generate();
                 }
 
                 let mut shared = shared.lock().unwrap();
@@ -128,8 +130,6 @@ fn search_solution(vmin: &Vec<u32>, vmax: &Vec<u32>, wishes: &Vec<Vec<u32>>, tim
                 shared.iterations += 1;
 
                 if score < shared.best_score || shared.best_score == -1 {
-                    //clearline();
-                    //println!("{}# best score : {}", id, score);
                     shared.best_score = score;
                     shared.best_results = results;
 
@@ -138,7 +138,7 @@ fn search_solution(vmin: &Vec<u32>, vmax: &Vec<u32>, wishes: &Vec<Vec<u32>>, tim
                 }
                 if id == 0 {
                     clearline();
-                    print!("Iter {it:>5} ({rate:>4.0}/s). Actual best score : {bs:>4}. {left:.1} seconds left", bs=shared.best_score, it=shared.iterations, rate=shared.iterations as f64 / (time::precise_time_s() - t0), left=shared.timeout - time::precise_time_s());
+                    print!("Iter {it:>5} ({rate:>4.0}/s). Actual best score : \x1B[31;22m{bs}\x1B[0m. {left:.1} seconds left", bs=shared.best_score, it=shared.iterations, rate=shared.iterations as f64 / (time::precise_time_s() - t0), left=shared.timeout - time::precise_time_s());
                     io::stdout().flush().ok().unwrap();
                 }
                 if time::precise_time_s() > shared.timeout {
@@ -195,14 +195,14 @@ fn main() {
         inc[wishes[i][results[i]] as usize] += 1;
         wos[results[i] as usize] += 1;
     }
-    println!("Final best score {}", score);
+    println!("Final best score \x1B[31;1m{}\x1B[0m", score);
     println!("Amount in each choice : {:?}", inc);
 
     for j in 0..vmin.len() {
         println!("WS{:>2} : {} <= {} <= {}", j+1, vmin[j], wos[j], vmax[j]);
     }
 
-    if out_file.len() == 0 {
+    if out_file.is_empty() {
         for x in &results {
             print!("{}{}", x, delimiter);
         }
