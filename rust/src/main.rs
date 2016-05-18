@@ -3,19 +3,19 @@ mod frand;
 
 use std::env;
 use std::io::prelude::*;
-use std::io;
 
 use std::thread;
 use std::sync::{Arc, Mutex};
 
 extern crate num_cpus;
 extern crate time;
+extern crate term;
 
-fn clearline() {
+/*fn clearline() {
     print!("\x1B[999D\x1B[K"); // contains two commands
     // 999D : cursor left by 999 caracter
     // K    : erase line
-}
+}*/
 
 fn min_pos<T: PartialOrd + Copy>(xs: &Vec<T>) -> usize {
     let mut k = 0;
@@ -114,6 +114,7 @@ fn search_solution(vmin: &Vec<u32>, vmax: &Vec<u32>, wishes: &Vec<Vec<u32>>, tim
 
         childs.push(thread::spawn(move || {
             let mut rand = frand::FastRand::new();
+            let mut t = term::stdout().unwrap();
 
             loop {
                 let results = shuffle(&vmin, &vmax, wishesf.clone(), &mut rand); // all the load is here
@@ -137,9 +138,13 @@ fn search_solution(vmin: &Vec<u32>, vmax: &Vec<u32>, wishes: &Vec<Vec<u32>>, tim
                     shared.timeout = now + f64::max(1.5 * (now - t0), time);
                 }
                 if id == 0 {
-                    clearline();
-                    print!("Iter {it:>5} ({rate:>4.0}/s). Actual best score : \x1B[31;22m{bs}\x1B[0m. {left:.1} seconds left", bs=shared.best_score, it=shared.iterations, rate=shared.iterations as f64 / (time::precise_time_s() - t0), left=shared.timeout - time::precise_time_s());
-                    io::stdout().flush().ok().unwrap();
+                    //clearline();
+                    t.carriage_return().unwrap();
+                    t.delete_line().unwrap();
+                    t.fg(term::color::GREEN).unwrap();
+                    write!(t, "Iter {it:>5} ({rate:>4.0}/s). Actual best score : {bs}. {left:>4.1} seconds left ", bs=shared.best_score, it=shared.iterations, rate=shared.iterations as f64 / (time::precise_time_s() - t0), left=shared.timeout - time::precise_time_s()).unwrap();
+                    t.reset().unwrap();
+                    t.flush().ok().unwrap();
                 }
                 if time::precise_time_s() > shared.timeout {
                     break;
@@ -157,7 +162,9 @@ fn search_solution(vmin: &Vec<u32>, vmax: &Vec<u32>, wishes: &Vec<Vec<u32>>, tim
     let shared = shared.clone();
     let shared = shared.lock().unwrap();
 
-    clearline();
+    let mut t = term::stdout().unwrap();
+    t.carriage_return().unwrap();
+    t.delete_line().unwrap();
 
     shared.best_results.clone()
 }
@@ -195,7 +202,7 @@ fn main() {
         inc[wishes[i][results[i]] as usize] += 1;
         wos[results[i] as usize] += 1;
     }
-    println!("Final best score \x1B[31;1m{}\x1B[0m", score);
+    println!("Final best score {}", score);
     println!("Amount in each choice : {:?}", inc);
 
     for j in 0..vmin.len() {
