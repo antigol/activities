@@ -8,7 +8,6 @@ repository = "https://github.com/antigol/activities.git"
 rand = "*"
 time = "*"
 num_cpus = "*"
-term = "*"
 
 [profile.release]
 opt-level = 3
