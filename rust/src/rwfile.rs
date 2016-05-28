@@ -2,24 +2,11 @@ use std::io::BufReader;
 use std::fs::File;
 use std::io::prelude::*;
 
-pub fn write_file(out_file: &String, delimiter: &String, vmin: &Vec<u32>, vmax: &Vec<u32>, wishes:& Vec<Vec<u32>>, results: &Vec<usize>) {
+pub fn write_file(out_file: &String, results: &Vec<usize>) {
     let mut buffer = File::create(out_file).expect("error when open output file");
 
-    for j in 0..vmin.len() {
-        buffer.write(format!("{}{}", vmin[j], delimiter).as_bytes()).unwrap();
-    }
-    buffer.write(b"\n").unwrap();
-    for j in 0..vmin.len() {
-        buffer.write(format!("{}{}", vmax[j], delimiter).as_bytes()).unwrap();
-    }
-    buffer.write(b"\n").unwrap();
-
-    for i in 0..wishes.len() {
-        for j in 0..vmin.len() {
-            buffer.write(format!("{}{}", wishes[i][j], delimiter).as_bytes()).unwrap();
-        }
-        buffer.write(format!("{}", results[i]).as_bytes()).unwrap();
-        buffer.write(b"\n").unwrap();
+    for i in 0..results.len() {
+        write!(buffer, "{}\n", results[i]).unwrap();
     }
 }
 

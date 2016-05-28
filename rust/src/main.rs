@@ -206,7 +206,7 @@ fn main() {
         }
         println!("");
     } else {
-        rwfile::write_file(&out_file, &delimiter, &vmin, &vmax, &wishes, &results);
+        rwfile::write_file(&out_file, &results);
         println!("Results written into file {}", out_file);
     }
 }
