@@ -40,6 +40,8 @@ pub fn read_file(in_file: &String, delimiter: &String) -> (Vec<u32>, Vec<u32>, V
 
     let mut wishes : Vec<Vec<u32>> = Vec::new();
 
+    let mut line_no = 3;
+
     buffer.clear();
     while reader.read_line(&mut buffer).unwrap() > 0 {
         let line : Vec<u32> = buffer.split(delimiter)
@@ -56,9 +58,12 @@ pub fn read_file(in_file: &String, delimiter: &String) -> (Vec<u32>, Vec<u32>, V
         copy.sort();
         for i in 0..n {
             if copy[i] != i as u32 {
-                panic!("WISHES lines must contain all values");
+                println!("The line number {} ({}th line of WISHES) in the input file does not contain a permutation", line_no, line_no-2);
+                break;
             }
         }
+
+        line_no += 1;
 
         buffer.clear();
     }
