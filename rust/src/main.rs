@@ -72,7 +72,15 @@ fn shuffle(vmin: &Vec<u32>, vmax: &Vec<u32>, mut wishes: Vec<Vec<f64>>, rand: &m
     results
 }
 
-fn search_solution(vmin: &Vec<u32>, vmax: &Vec<u32>, wishes: &Vec<Vec<u32>>, time: f64) -> Vec<usize> {
+fn action(wishes: &Vec<Vec<u32>>, results: &Vec<usize>) -> i32 {
+    let mut score = 0;
+    for i in 0..wishes.len() {
+        score += (wishes[i][results[i]] * wishes[i][results[i]]) as i32;
+    }
+    score
+}
+
+fn search_solution(vmin: &Vec<u32>, vmax: &Vec<u32>, wishes: &Vec<Vec<u32>>, time: f64) -> Vec<Vec<usize>> {
     let mut wishesf = vec![vec![0.0; vmin.len()]; wishes.len()];
     for i in 0..wishes.len() {
         for j in 0..vmin.len() {
@@ -85,7 +93,7 @@ fn search_solution(vmin: &Vec<u32>, vmax: &Vec<u32>, wishes: &Vec<Vec<u32>>, tim
     struct SharedData {
         timeout:      f64,
         best_score:   i32,
-        best_results: Vec<usize>,
+        best_results: Vec<Vec<usize>>,
         iterations:   usize
     };
     let shared = Arc::new(Mutex::new(SharedData {
@@ -112,10 +120,8 @@ fn search_solution(vmin: &Vec<u32>, vmax: &Vec<u32>, wishes: &Vec<Vec<u32>>, tim
 
             loop {
                 let results = shuffle(&vmin, &vmax, wishesf.clone(), &mut rand); // all the load is here
-                let mut score: i32 = 0;
-                for i in 0..wishes.len() {
-                    score += (wishes[i][results[i]] * wishes[i][results[i]]) as i32;
-                }
+                let score = action(&wishes, &results);
+
                 if rand.get_turns() > 512 {
                     rand.generate();
                 }
@@ -126,15 +132,20 @@ fn search_solution(vmin: &Vec<u32>, vmax: &Vec<u32>, wishes: &Vec<Vec<u32>>, tim
 
                 if score < shared.best_score || shared.best_score == -1 {
                     shared.best_score = score;
-                    shared.best_results = results;
+                    shared.best_results.clear();
 
                     let now = time::precise_time_s();
                     shared.timeout = now + f64::max(1.5 * (now - t0), time);
                 }
+                if score == shared.best_score {
+                    if !shared.best_results.contains(&results) {
+                        shared.best_results.push(results);
+                    }
+                }
                 if id == 0 {
                     print!("\x1B[999D");
                     print!("\x1B[K");
-                    print!("Iter {it:>5} ({rate:>4.0}/s). Actual best score : {bs}. {left:>4.1} seconds left ", bs=shared.best_score, it=shared.iterations, rate=shared.iterations as f64 / (time::precise_time_s() - t0), left=shared.timeout - time::precise_time_s());
+                    print!("Iter {it:>5} ({rate:>4.0}/s). Actual best score : {bs} x {nbs}. {left:>4.1} seconds left ", bs=shared.best_score, nbs=shared.best_results.len(), it=shared.iterations, rate=shared.iterations as f64 / (time::precise_time_s() - t0), left=shared.timeout - time::precise_time_s());
                     std::io::stdout().flush().ok().unwrap();
                 }
                 if time::precise_time_s() > shared.timeout {
@@ -181,19 +192,16 @@ fn main() {
     println!("{} students. {} workshops", wishes.len(), vmin.len());
 
     let results = search_solution(&vmin, &vmax, &wishes, time);
-
-    let mut score = 0;
-    for i in 0..wishes.len() {
-        score += wishes[i][results[i]] * wishes[i][results[i]];
-    }
+    assert!(!results.is_empty());
+    let score = action(&wishes, &results[0]);
 
     let mut inc = vec![0; vmin.len()];
     let mut wos = vec![0; vmin.len()];
     for i in 0..wishes.len() {
-        inc[wishes[i][results[i]] as usize] += 1;
-        wos[results[i] as usize] += 1;
+        inc[wishes[i][results[0][i]] as usize] += 1;
+        wos[results[0][i] as usize] += 1;
     }
-    println!("Final best score {}", score);
+    println!("{} results with final best score {}", results.len(), score);
     println!("Amount in each choice : {:?}", inc);
 
     for j in 0..vmin.len() {
@@ -201,12 +209,12 @@ fn main() {
     }
 
     if out_file.is_empty() {
-        for x in &results {
+        for x in &results[0] {
             print!("{}{}", x, delimiter);
         }
         println!("");
     } else {
-        rwfile::write_file(&out_file, &results);
+        rwfile::write_file(&out_file, &results, &delimiter);
         println!("Results written into file {}", out_file);
     }
 }
