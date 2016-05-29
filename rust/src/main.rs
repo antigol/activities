@@ -105,7 +105,7 @@ fn search_solution(vmin: &Vec<u32>, vmax: &Vec<u32>, wishes: &Vec<Vec<u32>>, tim
 
     let mut childs = Vec::new();
 
-    print!("\x1B[31;42m");
+    print!("\x1B[31;42m"); // red background green
 
     for id in 0..num_cpus::get() {
         let shared = shared.clone();
@@ -164,7 +164,7 @@ fn search_solution(vmin: &Vec<u32>, vmax: &Vec<u32>, wishes: &Vec<Vec<u32>>, tim
     let shared = shared.clone();
     let shared = shared.lock().unwrap();
 
-    print!("\x1B[0m");
+    print!("\x1B[0m"); // reset color
     print!("\x1B[999D");
     print!("\x1B[K");
 

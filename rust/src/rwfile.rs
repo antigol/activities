@@ -14,10 +14,13 @@ pub fn write_file(out_file: &String, results: &Vec<Vec<usize>>, delimiter: &Stri
 }
 
 pub fn read_file(in_file: &String, delimiter: &String) -> (Vec<u32>, Vec<u32>, Vec<Vec<u32>>) {
+    let mut line_no = 0;
+
     let f = File::open(in_file).expect("error when open file");
     let mut reader = BufReader::new(f);
     let mut buffer = String::new();
 
+    line_no += 1;
     reader.read_line(&mut buffer).expect("The file is too short");
     let vmin : Vec<u32> = buffer.split(delimiter)
     .map(|x| x.trim())
@@ -27,6 +30,7 @@ pub fn read_file(in_file: &String, delimiter: &String) -> (Vec<u32>, Vec<u32>, V
     let n = vmin.len();
 
     buffer.clear();
+    line_no += 1;
     reader.read_line(&mut buffer).expect("The file is too short");
     let vmax : Vec<u32> = buffer.split(delimiter)
     .map(|x| x.trim())
@@ -43,30 +47,33 @@ pub fn read_file(in_file: &String, delimiter: &String) -> (Vec<u32>, Vec<u32>, V
 
     let mut wishes : Vec<Vec<u32>> = Vec::new();
 
-    let mut line_no = 3;
-
     buffer.clear();
     while reader.read_line(&mut buffer).unwrap() > 0 {
+        line_no += 1;
+
         let line : Vec<u32> = buffer.split(delimiter)
-        .map(|x| x.trim())
-        .filter(|x| !x.is_empty())
-        .map(|x| x.trim().parse::<u32>().expect("error while reading WISHES"))
-        .collect();
+            .map(|x| x.trim())
+            .filter(|x| !x.is_empty())
+            .map(|x| x.trim().parse::<u32>().expect(format!("error while reading WISHES at line {}", line_no).as_str()))
+            .collect();
 
         if line.len() != n {
-            panic!("WHISH must be m by n");
+            print!("\x1B[31m"); // red background green
+            println!("Line {} has been ignored.", line_no);
+            print!("\x1B[0m"); // reset color
+            continue;
         }
         wishes.push(line.clone());
         let mut copy = line.clone();
         copy.sort();
         for i in 0..n {
             if copy[i] != i as u32 {
-                println!("The line number {} ({}th line of WISHES) in the input file does not contain a permutation", line_no, line_no-2);
+                print!("\x1B[31m"); // red background green
+                println!("Line {} does not contain a permutation.", line_no);
+                print!("\x1B[0m"); // reset color
                 break;
             }
         }
-
-        line_no += 1;
 
         buffer.clear();
     }
