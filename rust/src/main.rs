@@ -53,7 +53,7 @@ fn shuffle(vmin: &Vec<u32>, vmax: &Vec<u32>, mut wishes: Vec<Vec<f64>>, rand: &m
     // Modify randomly the actual wishes by adding a value in (-0.5,0.5)
     for i in 0..wishes.len() {
         for j in 0..vmin.len() {
-            wishes[i][j] += 0.5 * 2.0 * (rand::random::<f64>() - 0.5);
+            wishes[i][j] += 0.4 * f64::powi(2.0 * (rand::random::<f64>() - 0.5), 3);
         }
     }
     // Modify slowly the wishes according to the attractivity of each workshop up to eveybody is in his "first choice" (modified first choice)
@@ -63,7 +63,7 @@ fn shuffle(vmin: &Vec<u32>, vmax: &Vec<u32>, mut wishes: Vec<Vec<f64>>, rand: &m
 
         for i in 0..wishes.len() {
             for j in 0..vmin.len() {
-                wishes[i][j] += 3e-4 * rand.get() * (cnt[j]*cnt[j]*cnt[j]) as f64;
+                wishes[i][j] += 4e-4 * rand.get() * (cnt[j]*cnt[j]*cnt[j]) as f64;
             }
         }
     }
