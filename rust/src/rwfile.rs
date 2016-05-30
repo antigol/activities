@@ -2,18 +2,20 @@ use std::io::BufReader;
 use std::fs::File;
 use std::io::prelude::*;
 
-pub fn write_file(out_file: &String, results: &Vec<Vec<usize>>, delimiter: &String) {
+pub fn write_file(out_file: &String, results: &Vec<Vec<usize>>, wishes: &Vec<Vec<u32>>, ids: &Vec<String>, delimiter: &String) {
     let mut buffer = File::create(out_file).expect("error when open output file");
 
-    for i in 0..results[0].len() {
+    for i in 0..wishes.len() {
+        write!(buffer, "{}", ids[i]).unwrap();
         for k in 0..results.len() {
-            write!(buffer, "{}{}", results[k][i], delimiter).unwrap();
+            let r = results[k][i];
+            write!(buffer, "{d}{r}{d}{s}", d=delimiter, r=r, s=wishes[i][r]).unwrap();
         }
         write!(buffer, "\n").unwrap();
     }
 }
 
-pub fn read_file(in_file: &String, delimiter: &String) -> (Vec<u32>, Vec<u32>, Vec<Vec<u32>>) {
+pub fn read_file(in_file: &String, delimiter: &String) -> (Vec<u32>, Vec<u32>, Vec<Vec<u32>>, Vec<String>) {
     let mut line_no = 0;
 
     let f = File::open(in_file).expect("error when open file");
@@ -27,6 +29,7 @@ pub fn read_file(in_file: &String, delimiter: &String) -> (Vec<u32>, Vec<u32>, V
     .filter(|x| !x.is_empty())
     .map(|x| x.trim().parse::<u32>().expect("error while reading VMIN"))
     .collect();
+
     let n = vmin.len();
 
     buffer.clear();
@@ -46,37 +49,44 @@ pub fn read_file(in_file: &String, delimiter: &String) -> (Vec<u32>, Vec<u32>, V
     }
 
     let mut wishes : Vec<Vec<u32>> = Vec::new();
+    let mut ids : Vec<String> = Vec::new();
 
-    buffer.clear();
-    while reader.read_line(&mut buffer).unwrap() > 0 {
+    loop {
+        buffer.clear();
+        if reader.read_line(&mut buffer).unwrap() == 0 {
+            break;
+        }
         line_no += 1;
 
-        let line : Vec<u32> = buffer.split(delimiter)
-            .map(|x| x.trim())
-            .filter(|x| !x.is_empty())
-            .map(|x| x.trim().parse::<u32>().expect(format!("error while reading WISHES at line {}", line_no).as_str()))
-            .collect();
+        let mut line : Vec<String> = buffer.split(delimiter).map(|x| x.trim().to_string())/*.filter(|x| !x.is_empty())*/.collect();
 
-        if line.len() != n {
+        if line.len() == n + 1 {
+            ids.push(line.remove(0));
+        } else if line.len() == n {
+            ids.push(String::new());
+        } else {
             print!("\x1B[31m"); // red background green
-            println!("Line {} has been ignored.", line_no);
+            println!("l{}:{:?} has been ignored.", line_no, line);
             print!("\x1B[0m"); // reset color
             continue;
         }
-        wishes.push(line.clone());
-        let mut copy = line.clone();
+
+        let numbers : Vec<u32> = line.iter()
+            .map(|x| x.parse::<u32>().unwrap_or(0))
+            .collect();
+
+        wishes.push(numbers.clone());
+        let mut copy = numbers.clone();
         copy.sort();
         for i in 0..n {
             if copy[i] != i as u32 {
                 print!("\x1B[31m"); // red background green
-                println!("Line {} does not contain a permutation.", line_no);
+                println!("l{}:{:?}{:?} does not contain a permutation.", line_no, ids.last().unwrap(), numbers);
                 print!("\x1B[0m"); // reset color
                 break;
             }
         }
-
-        buffer.clear();
     }
 
-    (vmin, vmax, wishes)
+    (vmin, vmax, wishes, ids)
 }

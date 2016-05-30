@@ -7,9 +7,11 @@ use std::io::prelude::*;
 use std::thread;
 use std::sync::{Arc, Mutex};
 
+extern crate rand;
 extern crate num_cpus;
 extern crate time;
 
+// Return the position of the minimal value of a vector (the vector must be nonempty)
 fn min_pos<T: PartialOrd + Copy>(xs: &Vec<T>) -> usize {
     let mut k = 0;
     let mut min = xs[0];
@@ -22,6 +24,7 @@ fn min_pos<T: PartialOrd + Copy>(xs: &Vec<T>) -> usize {
     k
 }
 
+// Compute the overage or lack in each workshop if we put the people into their best wishes
 fn count(vmin: &Vec<u32>, vmax: &Vec<u32>, wishes: &Vec<Vec<f64>>) -> (Vec<i32>, bool) {
     let mut x = vec![0; vmin.len()];
 
@@ -42,16 +45,18 @@ fn count(vmin: &Vec<u32>, vmax: &Vec<u32>, wishes: &Vec<Vec<f64>>) -> (Vec<i32>,
         }
     }
 
-    (x, ok)
+    (x, ok) // ok = no lack and no overage
 }
 
 fn shuffle(vmin: &Vec<u32>, vmax: &Vec<u32>, mut wishes: Vec<Vec<f64>>, rand: &mut frand::FastRand) -> Vec<usize>
 {
+    // Modify randomly the actual wishes by adding a value in (-0.5,0.5)
     for i in 0..wishes.len() {
         for j in 0..vmin.len() {
-            wishes[i][j] += 0.1 * 2.0 * (rand.get() - 0.5);
+            wishes[i][j] += 0.5 * 2.0 * (rand::random::<f64>() - 0.5);
         }
     }
+    // Modify slowly the wishes according to the attractivity of each workshop up to eveybody is in his "first choice" (modified first choice)
     loop {
         let (cnt, ok) = count(&vmin, &vmax, &wishes);
         if ok { break; }
@@ -63,6 +68,7 @@ fn shuffle(vmin: &Vec<u32>, vmax: &Vec<u32>, mut wishes: Vec<Vec<f64>>, rand: &m
         }
     }
 
+    // Extract the results
     let mut results = Vec::with_capacity(vmin.len());
 
     for i in 0..wishes.len() {
@@ -187,7 +193,7 @@ fn main() {
         None => ",".to_string()
     };
 
-    let (vmin, vmax, wishes) = rwfile::read_file(&in_file, &delimiter);
+    let (vmin, vmax, wishes, ids) = rwfile::read_file(&in_file, &delimiter);
 
     println!("{} students. {} workshops", wishes.len(), vmin.len());
 
@@ -214,7 +220,7 @@ fn main() {
         }
         println!("");
     } else {
-        rwfile::write_file(&out_file, &results, &delimiter);
+        rwfile::write_file(&out_file, &results, &wishes, &ids, &delimiter);
         println!("Results written into file {}", out_file);
     }
 }
