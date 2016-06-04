@@ -81,7 +81,7 @@ fn shuffle(vmin: &Vec<u32>, vmax: &Vec<u32>, mut wishes: Vec<Vec<f64>>, rand: &m
 fn action(wishes: &Vec<Vec<u32>>, results: &Vec<usize>) -> i32 {
     let mut score = 0;
     for i in 0..wishes.len() {
-        score += (wishes[i][results[i]] * wishes[i][results[i]]) as i32;
+        score += u32::pow(wishes[i][results[i]], 2) as i32;
     }
     score
 }

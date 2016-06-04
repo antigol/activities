@@ -31,9 +31,8 @@ Input
 
 Ouput
 =====
-The output file contains all the results foud with the same score.
-The first column contains the id's, then one conlum for the first results, one for the values of
-the first results. Then two columns for the second results and so on.
+The output file contains all the equivalent solutions (with the same score).
+There is a pair of column for each solution: one column contains the assigned workshop and the other contain the wish associated with this choice.
 
      |R|V|R|V|
      |E|A|E|A|...
@@ -60,20 +59,21 @@ Example
 =======
 Example executed 60 seconds with the comma as separator.
 
-input.csv
+input.txt
 
-    10,15,14
-    20,16,17
-    0,1,2
-    2,1,0
-    0,2,1
-    0,1,2
-    2,1,0
-    0,2,1
+      0,1,0,0,5
+      5,5,5,5,5
+    a,0,1,2,3,4
+    b,1,0,2,3,4
+    c,3,2,1,0,4
+    d,1,2,3,4,0
+    e,0,1,2,3,4
+    f,4,3,2,1,0
+    g,2,3,4,0,1
 
 `./activities input.txt output.txt 60 ","`
 
-output.csv
+output.txt
 
     a,4,4,0,0,4,4
     b,1,0,1,0,1,0
@@ -82,6 +82,8 @@ output.csv
     e,4,4,4,4,0,0
     f,4,0,4,0,4,0
     g,4,1,4,1,4,1
+
+3 solutions found.
 
 Compile
 =======
