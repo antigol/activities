@@ -1,5 +1,5 @@
 mod rwfile;
-mod frand;
+//mod frand;
 
 use std::env;
 use std::io::prelude::*;
@@ -10,6 +10,8 @@ use std::sync::{Arc, Mutex};
 extern crate rand;
 extern crate num_cpus;
 extern crate time;
+
+use rand::Rng;
 
 // Return the position of the minimal value of a vector (the vector must be nonempty)
 fn min_pos<T: PartialOrd + Copy>(xs: &Vec<T>) -> usize {
@@ -48,12 +50,12 @@ fn count(vmin: &Vec<u32>, vmax: &Vec<u32>, wishes: &Vec<Vec<f64>>) -> (Vec<i32>,
     (x, ok) // ok = no lack and no overage
 }
 
-fn shuffle(vmin: &Vec<u32>, vmax: &Vec<u32>, mut wishes: Vec<Vec<f64>>, rand: &mut frand::FastRand) -> Vec<usize>
+fn shuffle(vmin: &Vec<u32>, vmax: &Vec<u32>, mut wishes: Vec<Vec<f64>>, rand: &mut rand::XorShiftRng) -> Vec<usize>
 {
-    // Modify randomly the actual wishes by adding a value in (-0.5,0.5)
+    // Modify randomly the actual wishes by adding a value in (-1,1)
     for i in 0..wishes.len() {
         for j in 0..vmin.len() {
-            wishes[i][j] += 0.4 * f64::powi(2.0 * (rand::random::<f64>() - 0.5), 3);
+            wishes[i][j] += 0.4 * f64::powi(rand.gen_range::<f64>(-1.0, 1.0), 3);
         }
     }
     // Modify slowly the wishes according to the attractivity of each workshop up to eveybody is in his "first choice" (modified first choice)
@@ -63,7 +65,7 @@ fn shuffle(vmin: &Vec<u32>, vmax: &Vec<u32>, mut wishes: Vec<Vec<f64>>, rand: &m
 
         for i in 0..wishes.len() {
             for j in 0..vmin.len() {
-                wishes[i][j] += 4e-4 * rand.get() * (cnt[j]*cnt[j]*cnt[j]) as f64;
+                wishes[i][j] += 4e-4 * rand.next_f64() * (cnt[j]*cnt[j]*cnt[j]) as f64;
             }
         }
     }
@@ -122,15 +124,11 @@ fn search_solution(vmin: &Vec<u32>, vmax: &Vec<u32>, wishes: &Vec<Vec<u32>>, tim
 
 
         childs.push(thread::spawn(move || {
-            let mut rand = frand::FastRand::new();
+            let mut rand = rand::random::<rand::XorShiftRng>();
 
             loop {
                 let results = shuffle(&vmin, &vmax, wishesf.clone(), &mut rand); // all the load is here
                 let score = action(&wishes, &results);
-
-                if rand.get_turns() > 512 {
-                    rand.generate();
-                }
 
                 let mut shared = shared.lock().unwrap();
 
