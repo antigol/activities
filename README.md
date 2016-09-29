@@ -1,5 +1,14 @@
-Use the rust version. The c++ version is old.
+Compile
+=======
 
+1. Install [rust and cargo](https://www.rust-lang.org/en-US/downloads.html)
+2. Clone this repository and open a terminal in it
+3. `cargo build --release`
+
+Execute
+=======
+
+`target/release/activities etc/input.txt etc/output.txt 15 ,`
 Input and Output file are in csv format. The delimiter is the comma by default.
 
 Input
@@ -84,9 +93,3 @@ output.txt
     g,4,1,4,1,4,1
 
 3 solutions found.
-
-Compile
-=======
-
-Install the packages `rustc` and `cargo`.
-Then, into the folder `rust`, execute the command `cargo build --release`
