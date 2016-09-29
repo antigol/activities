@@ -9,6 +9,7 @@ Execute
 =======
 
 `target/release/activities etc/input.txt etc/output.txt 15 ,`
+
 Input and Output file are in csv format. The delimiter is the comma by default.
 
 Input
