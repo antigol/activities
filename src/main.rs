@@ -1,5 +1,4 @@
 mod rwfile;
-//mod frand;
 
 use std::env;
 use std::io::prelude::*;
