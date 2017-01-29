@@ -148,7 +148,7 @@ fn search_solution(vmin: &Vec<u32>, vmax: &Vec<u32>, wishes: &Vec<Vec<u32>>, tim
                 if id == 0 {
                     print!("\x1B[999D");
                     print!("\x1B[K");
-                    print!("Iter {it:>5} ({rate:>4.0}/s). Actual best score : {bs} x {nbs}. {left:>4.1} seconds left ", bs=shared.best_score, nbs=shared.best_results.len(), it=shared.iterations, rate=shared.iterations as f64 / (time::precise_time_s() - t0), left=shared.timeout - time::precise_time_s());
+                    print!("Iter {it:>5} ({rate:>4.0}/s). Current best score : {bs} x {nbs}. {left:>4.1} seconds left ", bs=shared.best_score, nbs=shared.best_results.len(), it=shared.iterations, rate=shared.iterations as f64 / (time::precise_time_s() - t0), left=shared.timeout - time::precise_time_s());
                     std::io::stdout().flush().ok().unwrap();
                 }
                 if time::precise_time_s() > shared.timeout {
