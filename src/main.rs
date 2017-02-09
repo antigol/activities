@@ -64,7 +64,7 @@ fn shuffle(vmin: &Vec<u32>, vmax: &Vec<u32>, mut wishes: Vec<Vec<f64>>, rand: &m
 
         for i in 0..wishes.len() {
             for j in 0..vmin.len() {
-                wishes[i][j] += 4e-4 * rand.next_f64() * (cnt[j]*cnt[j]*cnt[j]) as f64;
+                wishes[i][j] += 4e-2 * rand.next_f64() * (cnt[j]*cnt[j]*cnt[j]) as f64;
             }
         }
     }
